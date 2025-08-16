@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { WaitlistForm } from './waitlist-form';
 
 export function HeroSection() {
   const [animationPhase, setAnimationPhase] = useState('initial');
@@ -10,14 +11,10 @@ export function HeroSection() {
   const [isMobile, setIsMobile] = useState(false);
   const [gifSrc, setGifSrc] = useState('');
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
-  const [isVideoLoaded, setIsVideoLoaded] = useState(false);
-  const videoRefs = useRef([]);
+  const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
   
-  const videos = [
-    { src: 'bg1.mp4', duration: 5000 }, // 5 seconds
-    { src: 'bg2.mp4', duration: 8000 }, // 8 seconds  
-    { src: 'bg3.mp4', duration: 8000 }  // 8 seconds
-  ];
+  const videos = ['bg1.mp4', 'bg2.mp4', 'bg3.mp4'];
 
   // Animation timing
   const timeUntilSlide = 2500; // Time before GIF starts sliding
@@ -79,33 +76,28 @@ export function HeroSection() {
     setGifSrc(`/logo/ahoumTextWhite.gif?t=${timestamp}`);
   }, []);
 
-  // Video cycling with timer-based approach
+  // Simple video cycling
   useEffect(() => {
-    const playCurrentVideo = () => {
-      const currentVideo = videoRefs.current[currentVideoIndex];
-      if (currentVideo) {
-        currentVideo.currentTime = 0;
-        currentVideo.play().catch(console.error);
-      }
-      
-      // Pause other videos
-      videoRefs.current.forEach((video, index) => {
-        if (video && index !== currentVideoIndex) {
-          video.pause();
-        }
-      });
-    };
+    // Start first video immediately
+    const firstVideo = videoRefs.current[0];
+    if (firstVideo) {
+      firstVideo.currentTime = 0;
+      firstVideo.play().catch(console.error);
+    }
+  }, []);
 
-    // Play current video
-    playCurrentVideo();
-
-    // Set timer to switch to next video
-    const timer = setTimeout(() => {
-      setCurrentVideoIndex((prevIndex) => (prevIndex + 1) % videos.length);
-    }, videos[currentVideoIndex].duration);
-
-    return () => clearTimeout(timer);
-  }, [currentVideoIndex, videos]);
+  // Handle video transitions
+  const handleVideoEnd = () => {
+    const nextIndex = (currentVideoIndex + 1) % videos.length;
+    setCurrentVideoIndex(nextIndex);
+    
+    // Start next video immediately
+    const nextVideo = videoRefs.current[nextIndex];
+    if (nextVideo) {
+      nextVideo.currentTime = 0;
+      nextVideo.play().catch(console.error);
+    }
+  };
 
   // Boot animation sequence
   useEffect(() => {
@@ -147,31 +139,26 @@ export function HeroSection() {
   return (
     <section className="min-h-screen bg-black/[0.96] antialiased bg-grid-white/[0.02] relative overflow-hidden">
       {/* Background Videos with Fade Transition */}
-      {videos.map((video, index) => (
-        <motion.video
+      {videos.map((videoSrc, index) => (
+        <video
           key={index}
           ref={(el) => { videoRefs.current[index] = el; }}
           muted
           playsInline
-          className="absolute inset-0 object-cover"
+          loop={false}
+          onEnded={handleVideoEnd}
+          className="absolute inset-0 object-cover transition-opacity duration-1000 ease-in-out"
           style={{ 
             width: '120%',
             height: '120%',
             left: '50%',
             top: '50%',
-            transform: 'translate(-50%, -50%)'
-          }}
-          initial={{ opacity: 0 }}
-          animate={{ 
-            opacity: index === currentVideoIndex ? 0.6 : 0 
-          }}
-          transition={{ 
-            duration: 1.5, 
-            ease: "easeInOut" 
+            transform: 'translate(-50%, -50%)',
+            opacity: index === currentVideoIndex ? 0.6 : 0
           }}
         >
-          <source src={`/${video.src}`} type="video/mp4" />
-        </motion.video>
+          <source src={`/${videoSrc}`} type="video/mp4" />
+        </video>
       ))}
       
       {/* Dark Overlay */}
@@ -228,7 +215,7 @@ export function HeroSection() {
         <motion.img
           src="/logo/cursiveLogoWhite.png"
           alt="Ahoum"
-          className="fixed z-[9999] pointer-events-none"
+          className="absolute z-[9999] pointer-events-none"
           style={currentLogoPosition}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -260,7 +247,7 @@ export function HeroSection() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
           >
-            Small daily rituals can spark life-changing shifts. Let ahoum create a journey that's uniquely yours.
+            Small daily rituals can spark life-changing shifts. Let ahoum create a journey that&apos;s uniquely yours.
           </motion.p>
           
           <motion.div 
@@ -270,22 +257,22 @@ export function HeroSection() {
             transition={{ duration: 0.8, delay: 0.6 }}
           >
             <motion.button 
-              className="bg-white text-black font-bold text-lg px-10 py-4 rounded-full shadow-xl shadow-white/20 transition-transform font-sans"
-              whileHover={{ scale: 1.05, boxShadow: '0 20px 60px rgba(255, 255, 255, 0.3)' }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Start Your Journey
-            </motion.button>
-            <motion.button 
               className="border-2 border-white/70 text-white hover:bg-white hover:text-black font-semibold text-lg px-10 py-4 rounded-full transition-all font-sans"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
+              onClick={() => setIsWaitlistOpen(true)}
             >
-              Learn More
+              Join Waitlist
             </motion.button>
           </motion.div>
         </motion.div>
       )}
+
+      {/* Waitlist Form Modal */}
+      <WaitlistForm 
+        isOpen={isWaitlistOpen} 
+        onClose={() => setIsWaitlistOpen(false)} 
+      />
     </section>
   );
 }
