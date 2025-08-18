@@ -20,28 +20,47 @@ export function WaitlistForm({ isOpen, onClose }: WaitlistFormProps) {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError('');
     
-    // Simulate form submission
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    setIsSubmitting(false);
-    setIsSubmitted(true);
-    
-    // Reset form after 3 seconds
-    setTimeout(() => {
-      setIsSubmitted(false);
-      setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        message: '',
-        category: 'wellness-worker'
+    try {
+      const response = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
       });
-    }, 3000);
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Something went wrong');
+      }
+
+      setIsSubmitted(true);
+      
+      // Close modal after 3 seconds
+      setTimeout(() => {
+        setIsSubmitted(false);
+        setFormData({
+          name: '',
+          email: '',
+          phone: '',
+          message: '',
+          category: 'wellness-worker'
+        });
+        onClose();
+      }, 3000);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -89,6 +108,13 @@ export function WaitlistForm({ isOpen, onClose }: WaitlistFormProps) {
               <div className="p-6">
                 {!isSubmitted ? (
                   <form onSubmit={handleSubmit} className="space-y-4">
+                    
+                    {/* Error Message */}
+                    {error && (
+                      <div className="p-3 bg-red-500/20 border border-red-500/50 rounded-lg">
+                        <p className="text-sm text-red-400 font-sans">{error}</p>
+                      </div>
+                    )}
                     
                     {/* Name Field */}
                     <div>
